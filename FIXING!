@@ -1,0 +1,106 @@
+if not ExecutorSupport then
+    local Players = game:GetService("Players")
+    local executorSupport = {}
+
+    function test(name: string, func: () -> (), ...)
+        local success, _ = pcall(func, ...)
+        executorSupport[name] = success
+        return success
+    end
+
+    test("require", require, game:GetService("ReplicatedStorage"):WaitForChild("ModuleScript"))
+    
+    -- Verificações de suporte para funções do executor
+    test("firesignal", function()
+        local event = Instance.new("BindableEvent")
+        local fired = false
+
+        event.Event:Once(function(value)
+            fired = value
+        end)
+
+        firesignal(event.Event, true)
+
+        task.wait()
+        event:Destroy()
+
+        assert(fired, "Failed to fire a BindableEvent")
+    end)
+
+    -- Carregar suporte do executor
+    for name, result in pairs(executorSupport) do
+        print(name .. ":", result)
+    end
+
+    getgenv().ExecutorSupport = executorSupport
+end
+
+-- Função para criar a GUI
+local function createTestGUI()
+    local player = Players.LocalPlayer
+    local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+    local frame = Instance.new("Frame", screenGui)
+    frame.Size = UDim2.new(0.5, 0, 0.5, 0)
+    frame.Position = UDim2.new(0.25, 0, 0.25, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Vermelho
+
+    local textLabel = Instance.new("TextLabel", frame)
+    textLabel.Size = UDim2.new(1, 0, 0.8, 0)  -- Ajustar altura
+    textLabel.Text = "Esta é uma GUI de teste"
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+    textLabel.BackgroundTransparency = 1  -- Torna o fundo do label transparente
+
+    local closeButton = Instance.new("TextButton", frame)
+    closeButton.Size = UDim2.new(0.5, 0, 0.2, 0)  -- Ajustar tamanho do botão
+    closeButton.Position = UDim2.new(0.25, 0, 0.8, 0)  -- Colocar abaixo do label
+    closeButton.Text = "Fechar GUI"
+    closeButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Verde
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)  -- Branco
+
+    -- Conectar o evento de clique do botão para fechar a GUI
+    closeButton.MouseButton1Click:Connect(function()
+        screenGui:Destroy()  -- Destrua a ScreenGui
+        print("GUI de teste removida da tela.")
+    end)
+
+    -- Função para permitir arrastar a GUI
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    frame.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+end
+
+-- Carregar o script específico do jogo
+print("Executor Codex detectado, carregando o GUI...")
+
+-- Tente carregar o script e adicione uma mensagem para verificar
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/notpoiu/mspaint/main/places/" .. game.GameId .. ".lua"))()
+end)
+
+if not success then
+    print("Falha ao carregar o GUI:", err)
+else
+    print("GUI carregada com sucesso!")
+    createTestGUI()  -- Chame a função para criar a GUI de teste
+end
